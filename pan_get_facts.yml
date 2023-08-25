@@ -9,19 +9,22 @@
 
 
   tasks:
-    - name: Get facts
-      paloaltonetworks.panos.panos_facts:
-        provider: '{{ provider }}'
-        gather_subset: 
-          - "config"
+    - name: Get PanOS Firewall Configuration
+      block:
+      - name: Get Configration from Firewall
+        paloaltonetworks.panos.panos_facts:
+          provider: '{{ provider }}'
+          gather_subset: 
+            - "config"
 
-    - name: print facts
-      ansible.builtin.debug:
-        var: ansible_facts.net_config
+      - name: print facts
+        ansible.builtin.debug:
+          var: ansible_facts.net_config
+          verbosity: 2
 
-    - name: Debug
-      ansible.builtin.set_fact:
-        date_time: "{{ lookup ('pipe', 'date +%Y-%m-%d@%H:%M:%S') }}"
+      - name: Debug
+        ansible.builtin.set_fact:
+          date_time: "{{ lookup ('pipe', 'date +%Y-%m-%d%H:%M:%S') }}"
 
     - name: GitOps functions
       block:
@@ -29,12 +32,6 @@
         ansible.scm.git_retrieve:
           origin:
             url: git@github.com:taruch/ansible-pan-demo.git
-            #url: git@github.com:cidrblock/scm_testing.git
-          #upstream:
-          #  url: git@github.com:ansible-network/scm_testing.git
-          #branch:
-          #  name: "{{ inventory_hostname }}.{{ date_time }}"
-          #  duplicate_detection: true
         register: repository
      
       - name: Debug repository data
@@ -51,8 +48,12 @@
         ansible.scm.git_publish:
           commit:
             message: "Backup at {{ date_time }}"
+          include: "--all"
           path: "{{ repository['path'] }}"
+          user:
+            name: "Todd Ruch"
+            email: truch@redhat.com
       ### End of GitOps Block
-      #tags:
-      #  - gitops
-      #  - never
+      tags:
+        - gitops
+        - never
