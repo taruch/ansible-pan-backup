@@ -28,32 +28,32 @@
 
     - name: print facts
       ansible.builtin.debug:
-        var: ansible_facts
+        var: ansible_facts.net_config
 
     - name: GitOps functions
       block:
-        - name: Retrieve a repository from a distant location and make it available locally
-          ansible.scm.git_retrieve:
-            origin:
-              url: git@github.com:cidrblock/scm_testing.git
-            upstream:
-              url: git@github.com:ansible-network/scm_testing.git
-            branch:
-              name:
-              duplicate_detection: true
-    
-          register: repository
-    
-        - name: Add to the repository
-          ansible.builtin.copy:
-            content: "{{ repository | to_nice_yaml }}"
-            dest: "{{ repository['path'] }}/details.yaml"
-    
-        - name: Publish the changes
-          ansible.scm.git_publish:
-            commit:
-              msg:
-            path: "{{ repository['path'] }}"
+      - name: Retrieve a repository from a distant location and make it available locally
+        ansible.scm.git_retrieve:
+          origin:
+            url: git@github.com:cidrblock/scm_testing.git
+          #upstream:
+            #url: git@github.com:ansible-network/scm_testing.git
+          branch:
+            name: "{{ inventory_hostname }}.{{ ansible_date_time }}"
+            duplicate_detection: true
+  
+        register: repository
+  
+      - name: Add to the repository
+        ansible.builtin.copy:
+          content: "{{ repository | to_nice_yaml }}"
+          dest: "{{ repository['path'] }}/details.yaml"
+  
+      - name: Publish the changes
+        ansible.scm.git_publish:
+          commit:
+            msg:
+          path: "{{ repository['path'] }}"
       ### End of GitOps Block
       tags:
         - gitops
