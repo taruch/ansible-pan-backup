@@ -1,21 +1,12 @@
 ---
-# This playbook will connect to every device listed in the hosts file with the following command
-#
-# ansible-playbook pan_config_pull.yml -i host
-#
-# It will then  extract the running config from each devices and save them locally in ./config/
-
 - name: Pull Configuration from Palo Alto Firewalls
-  hosts: all
-  gather_facts: no
+  hosts: panos-fw
+  gather_facts: False
   connection: local
 
   vars:
     configs_dir: ./configs/
-    provider:
-      ip_address: 18.117.2.207
-      password: C1sco12345
-      username: admin
+
 
   tasks:
     - name: Get facts
@@ -28,31 +19,40 @@
       ansible.builtin.debug:
         var: ansible_facts.net_config
 
+    - name: Debug
+      ansible.builtin.set_fact:
+        date_time: "{{ lookup ('pipe', 'date +%Y-%m-%d@%H:%M:%S') }}"
+
     - name: GitOps functions
       block:
       - name: Retrieve a repository from a distant location and make it available locally
         ansible.scm.git_retrieve:
           origin:
-            url: git@github.com:cidrblock/scm_testing.git
+            url: git@github.com:taruch/ansible-pan-demo.git
+            #url: git@github.com:cidrblock/scm_testing.git
           #upstream:
-            #url: git@github.com:ansible-network/scm_testing.git
-          branch:
-            name: "{{ inventory_hostname }}.{{ ansible_date_time }}"
-            duplicate_detection: true
-  
+          #  url: git@github.com:ansible-network/scm_testing.git
+          #branch:
+          #  name: "{{ inventory_hostname }}.{{ date_time }}"
+          #  duplicate_detection: true
         register: repository
+     
+      - name: Debug repository data
+        ansible.builtin.debug:
+          var: repository
+          verbosity: 2
   
       - name: Add to the repository
         ansible.builtin.copy:
-          content: "{{ repository | to_nice_yaml }}"
-          dest: "{{ repository['path'] }}/details.yaml"
+          content: "{{ ansible_facts.net_config }}"
+          dest: "{{ repository['path'] }}/{{ inventory_hostname }}.yml"
   
       - name: Publish the changes
         ansible.scm.git_publish:
           commit:
-            msg:
+            message: "Backup at {{ date_time }}"
           path: "{{ repository['path'] }}"
       ### End of GitOps Block
-      tags:
-        - gitops
-        - never
+      #tags:
+      #  - gitops
+      #  - never
