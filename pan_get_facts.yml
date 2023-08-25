@@ -4,10 +4,6 @@
   gather_facts: False
   connection: local
 
-  vars:
-    configs_dir: ./configs/
-
-
   tasks:
     - name: Get PanOS Firewall Configuration
       block:
