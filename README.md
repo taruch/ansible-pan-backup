@@ -15,3 +15,6 @@ provider:
   password: < put your password here - you should really vault this >
   username: < put your username here >
 git_url: < put your git ssh clone url here >
+
+
+If you want to run the gitops functions, you need to use the tag "gitops" when you run the playbook from the command line, or in your Ansible Automation Platform template.  Or, you could just delete the tags from the playbook.
