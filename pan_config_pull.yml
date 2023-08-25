@@ -9,14 +9,16 @@
   hosts: all
   gather_facts: no
   vars:
-    configs_dir: ./configs/
-    provider:
-      ip_address: 18.117.2.207
-      password: C1sco12345
-      username: admin
-
+    configs_dir: ./config_backups/
 
   tasks:
+
+    - name: Create a directory if it does not exist
+      ansible.builtin.file:
+        path: "{{ repository['path'] }}/config_backups"
+        state: directory
+        mode: '0755'
+
     - name: Generate API Key
       connection: local
       check_mode: no
