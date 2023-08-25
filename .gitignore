@@ -1,3 +1,4 @@
 artifacts
 *.log
 *.swp
+group_vars/*
