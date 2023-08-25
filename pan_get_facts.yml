@@ -25,6 +25,9 @@
       - name: Debug
         ansible.builtin.set_fact:
           date_time: "{{ lookup ('pipe', 'date +%Y-%m-%d%H:%M:%S') }}"
+      ### End of Block
+      tags:
+        - always
 
     - name: GitOps functions
       block:
@@ -42,8 +45,9 @@
       - name: Add to the repository
         ansible.builtin.copy:
           content: "{{ ansible_facts.net_config }}"
-          dest: "{{ repository['path'] }}/{{ inventory_hostname }}.{{ date_time }}"
-  
+          dest: "{{ repository['path'] }}/config_backups/{{ inventory_hostname }}"
+        register: result
+
       - name: Publish the changes
         ansible.scm.git_publish:
           commit:
@@ -53,6 +57,7 @@
           user:
             name: "Todd Ruch"
             email: truch@redhat.com
+        when: result.changed
       ### End of GitOps Block
       tags:
         - gitops
