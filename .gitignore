@@ -1,3 +1,5 @@
+ansible-navigator.yml
+ansible.cfg
 artifacts
 *.log
 *.swp
