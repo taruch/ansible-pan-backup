@@ -5,9 +5,9 @@
   connection: local
 
   tasks:
-    - name: Get PanOS Firewall Configuration
+    - name: Backup PanOS Firewall Configuration (XML) way 1
       block:
-      - name: Get Configration from Firewall
+      - name: Get Configration from Firewall using panos_facts
         paloaltonetworks.panos.panos_facts:
           provider: '{{ provider }}'
           gather_subset: 
@@ -18,12 +18,57 @@
           var: ansible_facts.net_config
           verbosity: 2
 
-      - name: Debug
-        ansible.builtin.set_fact:
-          date_time: "{{ lookup ('pipe', 'date +%Y-%m-%d%H:%M:%S') }}"
       ### End of Block
       tags:
-        - always
+        - never
+        - backup_facts
+
+
+    - name: Backup PanOS Firewall Configuraiton (XML) way 2
+      paloaltonetworks.panos.panos_export:
+        provider: '{{ privider }}'
+        category: 'configuration'
+        filename: 'running-config.xml'
+      tags:
+        - never
+        - backup_export
+   
+
+    - name: Get PanOS Firewall Configuration for Host Vars (Yaml)
+      block:
+      - name: Get General Configration from Firewall
+        paloaltonetworks.panos.panos_facts:
+          provider: '{{ provider }}'
+          gather_subset: 
+            - "!config"
+            - "all"
+
+      - name: Get facts for all registered IPs
+        paloaltonetworks.panos.panos_registered_ip_facts:
+          provider: '{{ provider }}'
+        register: registered_ip_facts
+      
+      - name: print Registered IP facts
+        ansible.builtin.debug:
+          var: registered_ip_facts
+          verbosity: 2
+
+      - name: Get a list of all security rules from Firewall
+        paloaltonetworks.panos.panos_security_rule:
+          provider: '{{ provider }}'
+          state: gathered
+          gathered_filter: '*'
+        register: registered_sec_rules
+
+      - name: print Security Rules facts
+        ansible.builtin.debug:
+          var: registered_sec_rules
+          verbosity: 2
+
+      ### End of Block
+      tags:
+        - never
+        - hostvars
 
     - name: GitOps functions
       block:
@@ -38,17 +83,45 @@
           var: repository
           verbosity: 2
   
-      - name: Create a directory if it does not exist
+      - name: Create a config_backups directory if it does not exist
         ansible.builtin.file:
           path: "{{ repository['path'] }}/config_backups"
           state: directory
           mode: '0755'
+        when: ansible_facts.net_config is defined
 
       - name: Add to the repository
         ansible.builtin.copy:
           content: "{{ ansible_facts.net_config }}"
           dest: "{{ repository['path'] }}/config_backups/{{ inventory_hostname }}"
+        when: ansible_facts.net_config is defined
         register: result
+
+      - name: Create a host_vars directory if it does not exist
+        ansible.builtin.file:
+          path: "{{ repository['path'] }}/host_vars"
+          state: directory
+          mode: '0755'
+        when: '"routing" in ansible_net_gather_subset'
+
+      - name: Add global facts to the repository
+        ansible.builtin.lineinfile:
+          line: "{{ ansible_facts | to_nice_yaml }}"
+          path: "{{ repository['path'] }}/host_vars/{{ inventory_hostname }}"
+          create: yes
+        when: '"routing" in ansible_net_gather_subset'
+        register: result
+
+      - name: Add security rules to the host_vars repository
+        ansible.builtin.lineinfile:
+          line: "{{ registered_sec_rules | to_nice_yaml }}"
+          path: "{{ repository['path'] }}/host_vars/{{ inventory_hostname }}"
+          create: yes
+        when: registered_sec_rules is defined
+
+      - name: Set date_time variable
+        ansible.builtin.set_fact:
+          date_time: "{{ lookup ('pipe', 'date +%Y-%m-%d%H:%M:%S') }}"
 
       - name: Publish the changes
         ansible.scm.git_publish:
@@ -64,3 +137,4 @@
       tags:
         - gitops
         - never
+

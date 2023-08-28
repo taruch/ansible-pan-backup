@@ -1,5 +1,6 @@
 ansible-navigator.yml
 ansible.cfg
+collections/ansible_collections
 artifacts
 *.log
 *.swp
